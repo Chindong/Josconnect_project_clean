@@ -2,51 +2,110 @@
 {% block title %}JosConnect{% endblock %}
 
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
   <div>
-    <h1>Available Dishes in Jos</h1>
-    <p class="muted">Browse dishes from approved shops and choose Delivery or Shop Pickup at checkout.</p>
+    <h1>JosConnect Menu</h1>
+    <p class="muted">Fresh dishes from verified kitchens across Jos.</p>
   </div>
 
   <form method="get" style="display:flex;gap:8px;">
-    <input
-      type="text"
-      name="q"
-      value="{{ query }}"
-      placeholder="Search dish or shop..."
-      style="padding:8px 12px;border:1px solid var(--border-strong);border-radius:8px;"
-    >
+    <input type="text" name="q" value="{{ query }}" placeholder="Search dish or shop...">
     <button type="submit" class="btn btn-navy">Search</button>
+    {% if query %}
+      <a href="{% url 'shops:customer_menu' %}" class="btn">Clear</a>
+    {% endif %}
   </form>
 </div>
 
-<div class="menu-grid-3">
-  {% for dish in dishes %}
-    <div class="card menu-dish-card">
-      <div>
-        {% if dish.image %}
-          <img src="{{ dish.image.url }}" alt="{{ dish.name }}" class="dish-thumb">
-        {% else %}
-          <div class="dish-thumb-placeholder">No Photo</div>
-        {% endif %}
-        <h3 style="margin-top:10px;">{{ dish.name }}</h3>
-        <p class="muted">{{ dish.shop.name }} · {{ dish.shop.address }}</p>
-        {% if dish.description %}
-          <p class="dish-desc">{{ dish.description }}</p>
-        {% endif %}
-      </div>
+<!-- 1. NEW UPDATE (Top 3 newest available dishes) -->
+<section style="margin-bottom:28px;">
+  <h2>New Update</h2>
+  <p class="muted" style="margin-bottom:12px;">Latest 3 available dishes added to JosConnect.</p>
 
-      <div class="dish-footer">
-        <strong class="dish-price">₦{{ dish.price }}</strong>
-        {% if not user.is_authenticated or not user.is_superuser and user.role == 'CUSTOMER' %}
-          <a href="{% url 'orders:add_to_cart' dish.id %}" class="btn" style="padding:7px 12px;font-size:0.84rem;">Add to Cart</a>
-        {% endif %}
-      </div>
+  {% if new_update_dishes %}
+    <div class="grid-3">
+      {% for dish in new_update_dishes %}
+        <div class="card">
+          {% if dish.image %}
+            <img src="{{ dish.image.url }}" alt="{{ dish.name }}" style="width:100%;height:170px;object-fit:cover;border-radius:10px;margin-bottom:10px;">
+          {% endif %}
+          <h3>{{ dish.name }}</h3>
+          <p class="muted">{{ dish.shop.name }}</p>
+          {% if dish.description %}
+            <p style="margin:8px 0;">{{ dish.description }}</p>
+          {% endif %}
+          <p><strong>₦{{ dish.price }}</strong></p>
+          {% if user.is_authenticated and not user.is_superuser and user.role == 'CUSTOMER' %}
+            <form method="post" action="{% url 'orders:add_to_cart' dish.id %}" style="margin-top:10px;">
+              {% csrf_token %}
+              <button type="submit" class="btn">Add to Cart</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
     </div>
-  {% empty %}
-    <div class="card" style="grid-column:1 / -1;">
-      <p class="muted">No dishes available right now. Check back soon or log in as a Shop Owner to upload dishes.</p>
+  {% else %}
+    <p class="muted">No new dishes available right now.</p>
+  {% endif %}
+</section>
+
+<!-- 2. RECOMMENDED (Today's recommended dish for all users) -->
+<section style="margin-bottom:28px;">
+  <h2>Recommended Today</h2>
+  <p class="muted" style="margin-bottom:12px;">Today's featured pick across the platform.</p>
+
+  {% if recommended_dish %}
+    <div class="card" style="max-width:480px;">
+      {% if recommended_dish.image %}
+        <img src="{{ recommended_dish.image.url }}" alt="{{ recommended_dish.name }}" style="width:100%;height:200px;object-fit:cover;border-radius:10px;margin-bottom:10px;">
+      {% endif %}
+      <h3>{{ recommended_dish.name }}</h3>
+      <p class="muted">{{ recommended_dish.shop.name }}</p>
+      {% if recommended_dish.description %}
+        <p style="margin:8px 0;">{{ recommended_dish.description }}</p>
+      {% endif %}
+      <p><strong>₦{{ recommended_dish.price }}</strong></p>
+      {% if user.is_authenticated and not user.is_superuser and user.role == 'CUSTOMER' %}
+        <form method="post" action="{% url 'orders:add_to_cart' recommended_dish.id %}" style="margin-top:10px;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-navy">Add Today's Pick to Cart</button>
+        </form>
+      {% endif %}
     </div>
-  {% endfor %}
-</div>
+  {% else %}
+    <p class="muted">No recommended dish available today.</p>
+  {% endif %}
+</section>
+
+<!-- 3. ALL AVAILABLE -->
+<section>
+  <h2>All Available</h2>
+  <p class="muted" style="margin-bottom:12px;">Every available dish ready to order right now.</p>
+
+  {% if all_available_dishes %}
+    <div class="grid-3">
+      {% for dish in all_available_dishes %}
+        <div class="card">
+          {% if dish.image %}
+            <img src="{{ dish.image.url }}" alt="{{ dish.name }}" style="width:100%;height:170px;object-fit:cover;border-radius:10px;margin-bottom:10px;">
+          {% endif %}
+          <h3>{{ dish.name }}</h3>
+          <p class="muted">{{ dish.shop.name }}</p>
+          {% if dish.description %}
+            <p style="margin:8px 0;">{{ dish.description }}</p>
+          {% endif %}
+          <p><strong>₦{{ dish.price }}</strong></p>
+          {% if user.is_authenticated and not user.is_superuser and user.role == 'CUSTOMER' %}
+            <form method="post" action="{% url 'orders:add_to_cart' dish.id %}" style="margin-top:10px;">
+              {% csrf_token %}
+              <button type="submit" class="btn">Add to Cart</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No available dishes match your filter right now.</p>
+  {% endif %}
+</section>
 {% endblock %}

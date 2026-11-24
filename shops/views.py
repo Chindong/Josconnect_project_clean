@@ -6,28 +6,50 @@ from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from orders.models import Order, OrderItem
+import hashlib
+from django.shortcuts import render
+from django.utils import timezone
 from .forms import DishForm
 from .models import Dish, Shop
 
 
 def customer_menu_view(request):
     query = request.GET.get('q', '').strip()
-    dishes = Dish.objects.filter(
+
+    base_available = Dish.objects.filter(
         is_available=True,
         shop__is_active=True,
         shop__owner__approval_status='APPROVED',
     ).select_related('shop')
 
-    if query:
-        dishes = dishes.filter(name__icontains=query) | dishes.filter(shop__name__icontains=query)
+    # 1. New Update: newest 3 available dishes across the platform
+    new_update_dishes = list(base_available.order_by('-created_at')[:3])
 
-    dishes = dishes.order_by('?')
+    # 2. Recommended: one consistent dish per day for all users
+    recommended_dish = None
+    all_for_rec = list(base_available.order_by('id'))
+    if all_for_rec:
+        today_key = timezone.localdate().isoformat().encode('utf-8')
+        digest_int = int(hashlib.sha256(today_key).hexdigest(), 16)
+        recommended_dish = all_for_rec[digest_int % len(all_for_rec)]
+
+    # 3. All Available: filter by search query if provided, then randomize order
+    all_available_dishes = base_available
+    if query:
+        all_available_dishes = all_available_dishes.filter(
+            name__icontains=query
+        ) | all_available_dishes.filter(
+            shop__name__icontains=query
+        )
+
+    all_available_dishes = all_available_dishes.order_by('?')
 
     return render(request, 'shops/customer_menu.html', {
-        'dishes': dishes,
+        'new_update_dishes': new_update_dishes,
+        'recommended_dish': recommended_dish,
+        'all_available_dishes': all_available_dishes,
         'query': query,
     })
-
 
 @login_required
 def owner_dashboard_view(request):
