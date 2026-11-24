@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ shop.name }} — Shop Owner Dashboard</h1>
+<p class="muted">{{ shop.address }}</p><br>
+
+<div class="grid-4">
+  <div class="card"><div class="muted">Total Sales</div><div class="stat-value">₦{{ total_sales }}</div></div>
+  <div class="card"><div class="muted">Plates Sold</div><div class="stat-value">{{ plates_sold }}</div></div>
+  <div class="card"><div class="muted">Customer Pickups</div><div class="stat-value">{{ customer_pickups_count }}</div></div>
+  <div class="card"><div class="muted">Dispatch Pickups</div><div class="stat-value">{{ dispatch_pickups_count }}</div></div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h2>7-Day Sales Progress</h2>
+    <canvas id="shopSalesCanvas" height="160"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Upload New Dish</h2>
+    <form method="post" enctype="multipart/form-data" id="dishUploadForm">
+      {% csrf_token %}
+      {{ dish_form.as_p }}
+
+      <div id="imagePreviewBox" style="display:none;margin-bottom:14px;">
+        <span class="muted" style="display:block;margin-bottom:6px;">Selected Image Preview:</span>
+        <img id="imagePreviewImg" src="" alt="Preview" style="width:110px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border-strong);">
+      </div>
+
+      <button type="submit" class="btn">+ Upload Dish</button>
+    </form>
+  </div>
+</div>
+
+<div class="card" style="margin-top:20px;">
+  <h2>My Uploaded Dishes</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Photo</th>
+        <th>Dish</th>
+        <th>Price</th>
+        <th>Menu Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in dishes %}
+        <tr>
+          <td>
+            {% if d.image %}
+              <img src="{{ d.image.url }}" alt="{{ d.name }}" style="width:52px;height:40px;object-fit:cover;border-radius:6px;">
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td><strong>{{ d.name }}</strong></td>
+          <td>₦{{ d.price }}</td>
+          <td>
+            {% if d.is_available %}
+              <span style="color:#15803d;font-weight:700;">Available</span>
+            {% else %}
+              <span style="color:#b45309;font-weight:700;">Finished / Hidden</span>
+            {% endif %}
+          </td>
+          <td style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            <form method="post" action="{% url 'shops:toggle_dish_availability' d.id %}" style="display:inline;margin:0;">
+              {% csrf_token %}
+              {% if d.is_available %}
+                <button type="submit" class="btn btn-navy" style="padding:6px 10px;font-size:0.8rem;">Mark Unavailable</button>
+              {% else %}
+                <button type="submit" class="btn btn-success" style="padding:6px 10px;font-size:0.8rem;">Available</button>
+              {% endif %}
+            </form>
+
+            <a href="{% url 'shops:edit_dish' d.id %}" class="btn" style="padding:6px 10px;font-size:0.8rem;">Edit</a>
+
+            <form method="post" action="{% url 'shops:delete_dish' d.id %}" style="display:inline;margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger" style="padding:6px 10px;font-size:0.8rem;" onclick="return confirm('Delete {{ d.name }} permanently?');">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="muted">No dishes uploaded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  (function() {
+    const fileInput = document.querySelector('#dishUploadForm input[type="file"]');
+    const previewBox = document.getElementById('imagePreviewBox');
+    const previewImg = document.getElementById('imagePreviewImg');
+
+    if (fileInput && previewBox && previewImg) {
+      fileInput.addEventListener('change', function() {
+        const file = this.files && this.files[0];
+        if (!file) {
+          previewBox.style.display = 'none';
+          previewImg.src = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          previewImg.src = e.target.result;
+          previewBox.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    const labels = {{ chart_labels_json|safe }};
+    const values = {{ chart_sales_json|safe }};
+    const canvas = document.getElementById('shopSalesCanvas');
+    const ctx = canvas.getContext('2d');
+    const maxVal = Math.max(...values, 1000);
+    const barW = (canvas.width - 40) / labels.length;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    labels.forEach((lbl, i) => {
+      const h = ((values[i] / maxVal) * (canvas.height - 45));
+      const x = 25 + i * barW;
+      const y = canvas.height - 25 - h;
+      ctx.fillStyle = '#ea580c';
+      ctx.fillRect(x, y, barW * 0.55, h);
+      ctx.fillStyle = '#1e293b';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(lbl, x, canvas.height - 8);
+    });
+  })();
+</script>
+{% endblock %}

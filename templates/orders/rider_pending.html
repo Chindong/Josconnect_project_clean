@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Rider Approval Pending | JosConnect{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:600px;margin:0 auto;">
+  <h1>Rider Registration Pending Approval</h1>
+  <p class="muted" style="margin-top:8px;">
+    Your dispatch rider profile is awaiting approval before you can claim delivery orders.
+    Current status: <strong>{{ user.get_approval_status_display }}</strong>.
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Live Tracking — Order #{{ order.id }} | JosConnect{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+  <div>
+    <h1>Live Delivery Tracking — Order #{{ order.id }}</h1>
+    <p class="muted">
+      Shop: <strong>{{ order.shop.name }}</strong> ·
+      Status: <strong id="liveStatusText">{{ order.get_status_display }}</strong> ·
+      Rider: <strong id="liveRiderName">{{ order.rider.username|default:"Waiting for Rider" }}</strong>
+    </p>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    {% if order.dropoff_lat and order.dropoff_lng %}
+      <a
+        href="https://www.google.com/maps/dir/?api=1&destination={{ order.dropoff_lat }},{{ order.dropoff_lng }}"
+        target="_blank"
+        rel="noopener"
+        class="btn btn-navy"
+      >
+        Open Google Maps Navigation
+      </a>
+    {% endif %}
+    <a href="{% url 'accounts:role_redirect' %}" class="btn">Back to Dashboard</a>
+  </div>
+</div>
+
+<div class="card">
+  <div id="liveTrackingMap" style="width:100%;height:420px;border-radius:12px;border:1px solid var(--border-strong);z-index:1;"></div>
+  <p class="muted" style="margin-top:10px;">
+    Last GPS ping: <strong id="lastPingText">{{ order.rider_location_updated_at|date:"H:i:s"|default:"Not yet transmitted" }}</strong>
+  </p>
+</div>
+
+<script>
+  (function () {
+    const shopLat = Number("{{ order.shop.latitude|default:'9.8965' }}");
+    const shopLng = Number("{{ order.shop.longitude|default:'8.8583' }}");
+    const dropoffLat = Number("{{ order.dropoff_lat|default:order.shop.latitude|default:'9.8965' }}");
+    const dropoffLng = Number("{{ order.dropoff_lng|default:order.shop.longitude|default:'8.8583' }}");
+
+    const initialRiderLat = {{ order.rider_lat|default:"null" }};
+    const initialRiderLng = {{ order.rider_lng|default:"null" }};
+    const isOrderRider = {{ is_order_rider|yesno:"true,false" }};
+    const orderStatus = "{{ order.status }}";
+
+    function createBadgeIcon(label, bgColor) {
+      return L.divIcon({
+        className: '',
+        html: `<div style="background:${bgColor};color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.82rem;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);">${label}</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      });
+    }
+
+    const map = L.map('liveTrackingMap').setView([dropoffLat, dropoffLng], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(map);
+
+    L.marker([shopLat, shopLng], { icon: createBadgeIcon('S', '#0f2942') })
+      .addTo(map)
+      .bindPopup('<strong>Shop Pickup:</strong> {{ order.shop.name|escapejs }}');
+
+    L.marker([dropoffLat, dropoffLng], { icon: createBadgeIcon('C', '#dc2626') })
+      .addTo(map)
+      .bindPopup('<strong>Customer Drop-off:</strong> {{ order.delivery_address|escapejs }}');
+
+    let riderMarker = null;
+
+    function placeOrMoveRider(lat, lng) {
+      const latNum = Number(lat);
+      const lngNum = Number(lng);
+      if (!riderMarker) {
+        riderMarker = L.marker([latNum, lngNum], { icon: createBadgeIcon('R', '#ea580c') })
+          .addTo(map)
+          .bindPopup('<strong>Dispatch Rider</strong>');
+      } else {
+        riderMarker.setLatLng([latNum, lngNum]);
+      }
+      map.panTo([latNum, lngNum]);
+    }
+
+    if (initialRiderLat !== null && initialRiderLng !== null) {
+      placeOrMoveRider(initialRiderLat, initialRiderLng);
+    }
+
+    function startBroadcastingRiderGPS() {
+      if (!navigator.geolocation) return;
+
+      navigator.geolocation.watchPosition(
+        function (position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          placeOrMoveRider(lat, lng);
+
+          fetch("{% url 'orders:update_rider_location' order.id %}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({ lat: lat, lng: lng }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.updated_at) {
+                document.getElementById('lastPingText').textContent = data.updated_at;
+              }
+            });
+        },
+        function (err) {
+          console.warn('GPS watch error:', err.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+      );
+    }
+
+    function pollRiderLocation() {
+      fetch("{% url 'orders:get_order_location_json' order.id %}")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status_display) {
+            document.getElementById('liveStatusText').textContent = data.status_display;
+          }
+          if (data.rider_name) {
+            document.getElementById('liveRiderName').textContent = data.rider_name;
+          }
+          if (data.rider_lat !== null && data.rider_lng !== null) {
+            placeOrMoveRider(data.rider_lat, data.rider_lng);
+          }
+          if (data.updated_at) {
+            document.getElementById('lastPingText').textContent = data.updated_at;
+          }
+        });
+    }
+
+    if (isOrderRider && orderStatus === 'DISPATCHED') {
+      startBroadcastingRiderGPS();
+    } else {
+      setInterval(pollRiderLocation, 5000);
+    }
+  })();
+</script>
+{% endblock %}

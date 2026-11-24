@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}My Orders | JosConnect{% endblock %}
+
+{% block content %}
+<h1>My Orders</h1>
+<p class="muted" style="margin-bottom:16px;">Track your delivery and shop pickup orders.</p>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Order #</th>
+        <th>Shop</th>
+        <th>Type</th>
+        <th>Address / Pickup</th>
+        <th>Total</th>
+        <th>Status</th>
+        <th>Rider</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in orders %}
+        <tr>
+          <td>#{{ order.id }}</td>
+          <td>{{ order.shop.name }}</td>
+          <td>{{ order.get_fulfillment_type_display }}</td>
+          <td>{{ order.delivery_address }}</td>
+          <td>₦{{ order.total_amount }}</td>
+          <td>{{ order.get_status_display }}</td>
+          <td>{{ order.rider.username|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="7" class="muted">You have not placed any orders yet.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

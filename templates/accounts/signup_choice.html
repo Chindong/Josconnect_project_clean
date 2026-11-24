@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Choose Account Type | JosConnect{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:720px;margin:0 auto;">
+  <h1>Create a JosConnect Account</h1>
+  <p class="muted" style="margin-top:6px;">Select the role that matches how you will use the platform.</p>
+
+  <div class="grid-3" style="margin-top:20px;">
+    <div class="card">
+      <h3>Customer</h3>
+      <p class="muted" style="margin:8px 0 14px;">Browse dishes, order food, and choose delivery or shop pickup.</p>
+      <a href="{% url 'accounts:role_signup' 'customer' %}" class="btn">Sign Up as Customer</a>
+    </div>
+
+    <div class="card">
+      <h3>Shop Owner</h3>
+      <p class="muted" style="margin:8px 0 14px;">Upload dishes, set prices, and track sales and pickups.</p>
+      <a href="{% url 'accounts:role_signup' 'shop' %}" class="btn btn-navy">Sign Up as Shop Owner</a>
+    </div>
+
+    <div class="card">
+      <h3>Dispatch Rider</h3>
+      <p class="muted" style="margin:8px 0 14px;">Pick up delivery orders, complete trips, and track earnings.</p>
+      <a href="{% url 'accounts:role_signup' 'rider' %}" class="btn btn-success">Sign Up as Rider</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

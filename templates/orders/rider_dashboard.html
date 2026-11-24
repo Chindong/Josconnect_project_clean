@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Dispatch Rider Dashboard</h1><br>
+
+<div class="grid-2">
+  <div class="card"><div class="muted">Completed Deliveries</div><div class="stat-value">{{ total_deliveries_count }}</div></div>
+  <div class="card"><div class="muted">Total Rider Earnings</div><div class="stat-value">₦{{ total_earnings }}</div></div>
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <h2>7-Day Delivery Progress</h2>
+  <canvas id="riderChart" height="120"></canvas>
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <h2>Available Delivery Pickups</h2>
+  <table>
+    <thead><tr><th>Order</th><th>Shop</th><th>Address</th><th>Fee</th><th>Action</th></tr></thead>
+    <tbody>
+      {% for o in available_orders %}
+        <tr>
+          <td>#{{ o.id }}</td>
+          <td>{{ o.shop.name }}</td>
+          <td>{{ o.delivery_address }}</td>
+          <td>₦{{ o.rider_earning }}</td>
+          <td>
+            <form method="post" action="{% url 'orders:rider_update_order' o.id 'claim' %}">
+              {% csrf_token %}
+              <button type="submit" class="btn">Pick Up Order</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="muted">No available pickups right now.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  (function() {
+    const labels = {{ chart_labels_json|safe }};
+    const values = {{ chart_progress_json|safe }};
+    const canvas = document.getElementById('riderChart');
+    const ctx = canvas.getContext('2d');
+    const maxVal = Math.max(...values, 5);
+    const barW = (canvas.width - 40) / labels.length;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    labels.forEach((lbl, i) => {
+      const h = ((values[i] / maxVal) * (canvas.height - 40));
+      const x = 25 + i * barW;
+      const y = canvas.height - 22 - h;
+      ctx.fillStyle = '#0f2942';
+      ctx.fillRect(x, y, barW * 0.55, h);
+      ctx.fillStyle = '#1e293b';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(lbl, x, canvas.height - 6);
+    });
+  })();
+</script>
+{% endblock %}

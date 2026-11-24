@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ dish.name }} | JosConnect{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px;margin:0 auto;">
+  <h1>Edit Dish</h1>
+  <p class="muted" style="margin-bottom:14px;">Update dish name, description, price, availability, or photo for <strong>{{ shop.name }}</strong>.</p>
+
+  {% if dish.image %}
+    <div style="margin-bottom:14px;">
+      <span class="muted" style="display:block;margin-bottom:6px;">Current Photo:</span>
+      <img src="{{ dish.image.url }}" alt="{{ dish.name }}" style="width:110px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border-strong);">
+    </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" id="editDishForm">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <div id="editPreviewBox" style="display:none;margin-bottom:14px;">
+      <span class="muted" style="display:block;margin-bottom:6px;">New Photo Preview:</span>
+      <img id="editPreviewImg" src="" alt="New Preview" style="width:110px;height:82px;object-fit:cover;border-radius:8px;border:1px solid var(--border-strong);">
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button type="submit" class="btn">Save Changes</button>
+      <a href="{% url 'shops:owner_dashboard' %}" class="btn btn-navy">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  (function() {
+    const fileInput = document.querySelector('#editDishForm input[type="file"]');
+    const previewBox = document.getElementById('editPreviewBox');
+    const previewImg = document.getElementById('editPreviewImg');
+
+    if (fileInput && previewBox && previewImg) {
+      fileInput.addEventListener('change', function() {
+        const file = this.files && this.files[0];
+        if (!file) {
+          previewBox.style.display = 'none';
+          previewImg.src = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          previewImg.src = e.target.result;
+          previewBox.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  })();
+</script>
+{% endblock %}

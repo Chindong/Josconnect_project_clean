@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Feedback | JosConnect{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <div class="card">
+    <h1>Send Feedback</h1>
+    <p class="muted" style="margin-top:4px;">Share suggestions, issues, or updates with the Project Owner.</p>
+
+    <form method="post" style="margin-top:14px;">
+      {% csrf_token %}
+      <textarea
+        name="message"
+        rows="4"
+        placeholder="Write your feedback here..."
+        style="width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;"
+      ></textarea>
+      <div style="margin-top:12px;">
+        <button type="submit" class="btn">Submit Feedback</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Your Recent Submissions</h2>
+    {% for item in recent %}
+      <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+        <p>{{ item.message }}</p>
+        <small class="muted">{{ item.created_at|date:"M d, Y H:i" }}</small>
+      </div>
+    {% empty %}
+      <p class="muted" style="margin-top:8px;">No feedback submitted yet.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

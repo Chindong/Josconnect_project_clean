@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}JosConnect{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+  <div>
+    <h1>Available Dishes in Jos</h1>
+    <p class="muted">Browse dishes from approved shops and choose Delivery or Shop Pickup at checkout.</p>
+  </div>
+
+  <form method="get" style="display:flex;gap:8px;">
+    <input
+      type="text"
+      name="q"
+      value="{{ query }}"
+      placeholder="Search dish or shop..."
+      style="padding:8px 12px;border:1px solid var(--border-strong);border-radius:8px;"
+    >
+    <button type="submit" class="btn btn-navy">Search</button>
+  </form>
+</div>
+
+<div class="menu-grid-3">
+  {% for dish in dishes %}
+    <div class="card menu-dish-card">
+      <div>
+        {% if dish.image %}
+          <img src="{{ dish.image.url }}" alt="{{ dish.name }}" class="dish-thumb">
+        {% else %}
+          <div class="dish-thumb-placeholder">No Photo</div>
+        {% endif %}
+        <h3 style="margin-top:10px;">{{ dish.name }}</h3>
+        <p class="muted">{{ dish.shop.name }} · {{ dish.shop.address }}</p>
+        {% if dish.description %}
+          <p class="dish-desc">{{ dish.description }}</p>
+        {% endif %}
+      </div>
+
+      <div class="dish-footer">
+        <strong class="dish-price">₦{{ dish.price }}</strong>
+        {% if not user.is_authenticated or not user.is_superuser and user.role == 'CUSTOMER' %}
+          <a href="{% url 'orders:add_to_cart' dish.id %}" class="btn" style="padding:7px 12px;font-size:0.84rem;">Add to Cart</a>
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <div class="card" style="grid-column:1 / -1;">
+      <p class="muted">No dishes available right now. Check back soon or log in as a Shop Owner to upload dishes.</p>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Management Dashboard | JosConnect{% endblock %}
+
+{% block content %}
+<h1>JosConnect Management Dashboard</h1>
+<p class="muted" style="margin-bottom:16px;">
+  Signed in as <strong>{{ user.username }}</strong> ({{ user.get_role_display }})
+</p>
+
+<div class="grid-3">
+  <div class="card">
+    <div class="muted">Today's Requests</div>
+    <div class="stat-value">{{ daily_requests }}</div>
+  </div>
+  <div class="card">
+    <div class="muted">Today's Dispatches</div>
+    <div class="stat-value">{{ daily_dispatches }}</div>
+  </div>
+  <div class="card">
+    <div class="muted">Total Platform Revenue</div>
+    <div class="stat-value">₦{{ total_revenue }}</div>
+  </div>
+</div>
+
+{% if is_project_owner %}
+  <div class="grid-2" style="margin-top:18px;">
+    <div class="card">
+      <h2>Employ Operations Staff</h2>
+      <p class="muted" style="margin-bottom:12px;">Create a staff account to help approve users, monitor dishes, and review feedback.</p>
+      <form method="post">
+        {% csrf_token %}
+        {{ staff_form.as_p }}
+        <button type="submit" name="create_staff" value="1" class="btn btn-navy">Create Staff Account</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Employed Staff ({{ employed_staff|length }})</h2>
+      <table>
+        <thead>
+          <tr><th>Username</th><th>Phone</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for staff in employed_staff %}
+            <tr>
+              <td>{{ staff.username }}</td>
+              <td>{{ staff.phone_number|default:"—" }}</td>
+              <td>{{ staff.is_active|yesno:"Active,Inactive" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3" class="muted">No staff accounts created yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+
+<div class="card" style="margin-top:18px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+    <div>
+      <h2>Live Delivery & Rider Movement Monitor</h2>
+      <p class="muted">Real-time view of active dispatch riders, pickup shops, and customer drop-off points.</p>
+    </div>
+    <span class="muted">Auto-refreshes every 6s</span>
+  </div>
+
+  <div id="adminFleetMap" style="width:100%;height:380px;border-radius:12px;border:1px solid var(--border-strong);z-index:1;"></div>
+  <div id="adminActiveList" style="margin-top:12px;"></div>
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <h2>Pending Shop Owner & Rider Registrations</h2>
+  <table>
+    <thead>
+      <tr><th>Username</th><th>Role</th><th>Phone</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for u in pending_registrations %}
+        <tr>
+          <td>{{ u.username }}</td>
+          <td>{{ u.get_role_display }}</td>
+          <td>{{ u.phone_number|default:"—" }}</td>
+          <td>
+            <form method="post" action="{% url 'orders:admin_approve_user' u.id 'accept' %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-success">Accept</button>
+            </form>
+            <form method="post" action="{% url 'orders:admin_approve_user' u.id 'reject' %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger">Reject</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="muted">No pending registrations.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <h2>All Shop Dish Uploads</h2>
+  <table>
+    <thead>
+      <tr><th>Dish</th><th>Shop</th><th>Owner</th><th>Price</th></tr>
+    </thead>
+    <tbody>
+      {% for dish in all_dishes %}
+        <tr>
+          <td>{{ dish.name }}</td>
+          <td>{{ dish.shop.name }}</td>
+          <td>{{ dish.shop.owner.username }}</td>
+          <td>₦{{ dish.price }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="muted">No dishes uploaded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <h2>User Feedback (Customers, Shop Owners & Riders)</h2>
+  <table>
+    <thead>
+      <tr><th>User</th><th>Role</th><th>Feedback</th></tr>
+    </thead>
+    <tbody>
+      {% for fb in all_feedback %}
+        <tr>
+          <td>{{ fb.user.username }}</td>
+          <td>{{ fb.user.get_role_display }}</td>
+          <td>{{ fb.message }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3" class="muted">No feedback submitted yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <h2>User Profiles</h2>
+  <table>
+    <thead>
+      <tr><th>Username</th><th>Role</th><th>Approval</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+      {% for u in managed_users %}
+        <tr>
+          <td>{{ u.username }}</td>
+          <td>{{ u.get_role_display }}</td>
+          <td>{{ u.get_approval_status_display }}</td>
+          <td>
+            {% if is_project_owner %}
+              <form method="post" action="{% url 'orders:admin_delete_user' u.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Delete {{ u.username }} permanently?');">Delete</button>
+              </form>
+            {% else %}
+              <span class="muted">Owner only</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="muted">No other user profiles found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  (function () {
+    if (typeof L === 'undefined') return;
+
+    const fleetMap = L.map('adminFleetMap').setView([9.8965, 8.8583], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(fleetMap);
+
+    const markersLayer = L.layerGroup().addTo(fleetMap);
+
+    function createBadgeIcon(label, bgColor) {
+      return L.divIcon({
+        className: '',
+        html: `<div style="background:${bgColor};color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.78rem;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);">${label}</div>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+      });
+    }
+
+    function loadActiveDeliveries() {
+      fetch("{% url 'orders:active_deliveries_json' %}")
+        .then((res) => res.json())
+        .then((data) => {
+          const deliveries = data.deliveries || [];
+          markersLayer.clearLayers();
+
+          const listContainer = document.getElementById('adminActiveList');
+          if (!deliveries.length) {
+            listContainer.innerHTML = '<p class="muted">No active deliveries in progress right now.</p>';
+            return;
+          }
+
+          const points = [];
+
+          const rowsHtml = deliveries.map((d) => {
+            const popupHtml = `
+              <div style="font-size:0.86rem;line-height:1.45;">
+                <strong>Order #${d.id}</strong> (${d.status})<br>
+                Shop: ${d.shop_name}<br>
+                Rider: ${d.rider_name}<br>
+                Last GPS: ${d.updated_at || 'Pending'}<br>
+                <a href="${d.track_url}">Open Order Tracker</a>
+              </div>
+            `;
+
+            if (d.shop_lat !== null && d.shop_lng !== null) {
+              const p = [Number(d.shop_lat), Number(d.shop_lng)];
+              L.marker(p, { icon: createBadgeIcon('S', '#0f2942') }).bindPopup(popupHtml).addTo(markersLayer);
+              points.push(p);
+            }
+            if (d.dropoff_lat !== null && d.dropoff_lng !== null) {
+              const p = [Number(d.dropoff_lat), Number(d.dropoff_lng)];
+              L.marker(p, { icon: createBadgeIcon('C', '#dc2626') }).bindPopup(popupHtml).addTo(markersLayer);
+              points.push(p);
+            }
+            if (d.rider_lat !== null && d.rider_lng !== null) {
+              const p = [Number(d.rider_lat), Number(d.rider_lng)];
+              L.marker(p, { icon: createBadgeIcon('R', '#ea580c') }).bindPopup(popupHtml).addTo(markersLayer);
+              points.push(p);
+            }
+
+            return `
+              <tr>
+                <td>#${d.id}</td>
+                <td>${d.shop_name}</td>
+                <td>${d.rider_name}</td>
+                <td>${d.status}</td>
+                <td>${d.updated_at || '—'}</td>
+                <td><a href="${d.track_url}" class="btn btn-navy" style="padding:5px 10px;font-size:0.8rem;">Track</a></td>
+              </tr>
+            `;
+          }).join('');
+
+          if (points.length) {
+            fleetMap.fitBounds(points, { padding: [30, 30], maxZoom: 15 });
+          }
+
+          listContainer.innerHTML = `
+            <table>
+              <thead>
+                <tr><th>Order</th><th>Shop</th><th>Rider</th><th>Status</th><th>Last Ping</th><th>Map</th></tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          `;
+        });
+    }
+
+    loadActiveDeliveries();
+    setInterval(loadActiveDeliveries, 6000);
+  })();
+</script>
+{% endblock %}

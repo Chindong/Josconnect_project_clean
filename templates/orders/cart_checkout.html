@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="grid-2">
+  <div class="card">
+    <h2>Your Cart</h2>
+    {% if items %}
+      <table>
+        <thead><tr><th>Dish</th><th>Shop</th><th>Qty</th><th>Total</th></tr></thead>
+        <tbody>
+          {% for row in items %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ row.shop_name }}</td>
+              <td>{{ row.quantity }}</td>
+              <td>₦{{ row.line_total }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p style="margin-top:12px;"><strong>Subtotal:</strong> ₦{{ subtotal }}</p>
+    {% else %}
+      <p class="muted">No items in cart yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Choose Fulfillment & Checkout</h2>
+    <form method="post">
+      {% csrf_token %}
+      <p style="margin:10px 0;">
+        <label><input type="radio" name="fulfillment_type" value="DELIVERY" checked> Dispatch Delivery (+₦{{ delivery_fee }})</label><br>
+        <label><input type="radio" name="fulfillment_type" value="PICKUP"> Shop Pickup (₦0 delivery fee)</label>
+      </p>
+      <p style="margin:10px 0;">
+        <label>Delivery Address (required for Delivery):</label><br>
+        <input type="text" name="delivery_address" placeholder="e.g., Rayfield / Bukuru / Terminus, Jos" style="width:100%;padding:8px;margin-top:4px;">
+      </p>
+      <button type="submit" class="btn">Place Order</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const map = L.map('checkoutMap').setView([9.8965, 8.8583], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  const marker = L.marker([9.8965, 8.8583], { draggable: true }).addTo(map);
+
+  function syncCoords(latlng) {
+    document.getElementById('id_dropoff_lat').value = latlng.lat.toFixed(6);
+    document.getElementById('id_dropoff_lng').value = latlng.lng.toFixed(6);
+  }
+
+  marker.on('dragend', () => syncCoords(marker.getLatLng()));
+  map.on('click', (e) => {
+    marker.setLatLng(e.latlng);
+    syncCoords(e.latlng);
+  });
+
+  function useMyCurrentGPS() {
+    if (!navigator.geolocation) return alert('Geolocation not supported.');
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const latlng = [pos.coords.latitude, pos.coords.longitude];
+      map.setView(latlng, 16);
+      marker.setLatLng(latlng);
+      document.getElementById('id_dropoff_lat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('id_dropoff_lng').value = pos.coords.longitude.toFixed(6);
+    });
+  }
+
+  function toggleMapBox(show) {
+    document.getElementById('deliveryMapSection').style.display = show ? 'block' : 'none';
+    if (show) setTimeout(() => map.invalidateSize(), 100);
+  }
+</script>
+{% endblock %}
