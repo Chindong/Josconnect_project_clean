@@ -1,0 +1,31 @@
+<div class="card" style="margin-bottom:18px;">
+  <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;">
+    {% if profile_user.live_photo %}
+      <img
+        src="{{ profile_user.live_photo.url }}"
+        alt="{{ profile_user.username }} live photo"
+        style="width:96px;height:96px;object-fit:cover;border-radius:12px;border:2px solid var(--border-strong);"
+      >
+    {% else %}
+      <div class="muted" style="width:96px;height:96px;border-radius:12px;border:1px dashed var(--border-strong);display:flex;align-items:center;justify-content:center;text-align:center;font-size:0.8rem;">
+        No Live Photo
+      </div>
+    {% endif %}
+
+    <div style="flex:1;min-width:240px;">
+      <h2>{{ profile_user.username }} <span class="muted">({{ profile_user.get_role_display }})</span></h2>
+      <p><strong>Registered Email:</strong> {{ profile_user.email }}</p>
+      <p><strong>Registered Phone:</strong> {{ profile_user.phone_number|default:"Not provided" }}</p>
+      <p><strong>Verification Status:</strong> {{ profile_user.get_approval_status_display }}</p>
+      {% if profile_user.requires_in_person_verification and profile_user.approval_status != 'APPROVED' %}
+        <p class="muted" style="margin-top:4px;">
+          ID submitted ({{ profile_user.id_reference|default:"On file" }}). Staff will call your phone number for in-person validation.
+        </p>
+      {% endif %}
+    </div>
+
+    <div>
+      <a href="{% url 'accounts:dashboard_password_reset' %}" class="btn btn-navy">Reset Password</a>
+    </div>
+  </div>
+</div>

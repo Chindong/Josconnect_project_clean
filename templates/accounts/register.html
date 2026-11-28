@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Register | JosConnect{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px;margin:0 auto;">
+  <h1>Create Your JosConnect Account</h1>
+  <p class="muted" style="margin-top:4px;">
+    All users must provide email, phone number, and a live photo. Shop Owners and Riders must also submit an ID for in-person staff validation.
+  </p>
+
+  <form method="post" enctype="multipart/form-data" style="margin-top:16px;">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.captured_photo_data }}
+
+    <p>
+      <label for="id_username">Username</label>
+      {{ form.username }}
+      {{ form.username.errors }}
+    </p>
+
+    <p>
+      <label for="id_email">Email Address</label>
+      {{ form.email }}
+      {{ form.email.errors }}
+    </p>
+
+    <p>
+      <label for="id_phone_number">Phone Number (for calls & validation)</label>
+      {{ form.phone_number }}
+      {{ form.phone_number.errors }}
+    </p>
+
+    <p>
+      <label for="id_role">Register As</label>
+      {{ form.role }}
+      {{ form.role.errors }}
+    </p>
+
+    <!-- Live Photo Capture for ALL Users -->
+    <div class="card" style="margin:14px 0;background:rgba(255,255,255,0.65);">
+      <h3>Live Photo Verification (Required for All Users)</h3>
+      <p class="muted" style="margin-bottom:10px;">Capture a live photo with your webcam/phone camera, or upload a photo file.</p>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <button type="button" class="btn btn-navy" onclick="startLiveCamera()">Open Camera</button>
+        <button type="button" class="btn" onclick="captureLivePhoto()">Snap Live Photo</button>
+      </div>
+
+      <video id="cameraPreview" autoplay playsinline style="display:none;width:100%;max-width:320px;border-radius:10px;margin-bottom:10px;"></video>
+      <canvas id="cameraCanvas" style="display:none;"></canvas>
+      <img id="photoPreviewImg" alt="Live Photo Preview" style="display:none;width:140px;height:140px;object-fit:cover;border-radius:10px;margin-bottom:10px;border:2px solid var(--border-strong);">
+
+      <p>
+        <label for="id_live_photo">Or Upload Photo File</label>
+        {{ form.live_photo }}
+        {{ form.live_photo.errors }}
+      </p>
+    </div>
+
+    <!-- ID Submission for Shop Owners & Riders -->
+    <div id="staffValidationFields" class="card" style="display:none;margin:14px 0;background:rgba(255,255,255,0.65);">
+      <h3>ID Submission for In-Person Staff Validation</h3>
+      <p class="muted" style="margin-bottom:10px;">
+        Shop Owners and Dispatch Riders submit their ID here first. Our staff will call your phone number to schedule in-person validation before approval.
+      </p>
+
+      <p>
+        <label for="id_id_reference">ID Number / Reference</label>
+        {{ form.id_reference }}
+        {{ form.id_reference.errors }}
+      </p>
+
+      <p>
+        <label for="id_id_document">Upload ID Document (Image or PDF)</label>
+        {{ form.id_document }}
+        {{ form.id_document.errors }}
+      </p>
+
+      <div id="shopOwnerFields" style="display:none;">
+        <p>
+          <label for="id_shop_name">Shop Name</label>
+          {{ form.shop_name }}
+          {{ form.shop_name.errors }}
+        </p>
+        <p>
+          <label for="id_shop_address">Shop Address</label>
+          {{ form.shop_address }}
+          {{ form.shop_address.errors }}
+        </p>
+      </div>
+    </div>
+
+    <p>
+      <label for="id_password1">Password</label>
+      {{ form.password1 }}
+      {{ form.password1.errors }}
+    </p>
+
+    <p>
+      <label for="id_password2">Confirm Password</label>
+      {{ form.password2 }}
+      {{ form.password2.errors }}
+    </p>
+
+    <button type="submit" class="btn">Complete Registration</button>
+  </form>
+
+  <p class="muted" style="margin-top:14px;">
+    Already have an account? <a href="{% url 'accounts:login' %}">Log in</a> ·
+    <a href="{% url 'accounts:password_reset' %}">Forgot Password?</a>
+  </p>
+</div>
+
+<script>
+  let streamRef = null;
+
+  function toggleRoleFields() {
+    const roleSelect = document.getElementById('id_role');
+    const roleVal = roleSelect ? roleSelect.value : 'CUSTOMER';
+    const needsId = (roleVal === 'SHOP_OWNER' || roleVal === 'RIDER');
+    document.getElementById('staffValidationFields').style.display = needsId ? 'block' : 'none';
+    document.getElementById('shopOwnerFields').style.display = (roleVal === 'SHOP_OWNER') ? 'block' : 'none';
+  }
+
+  async function startLiveCamera() {
+    const video = document.getElementById('cameraPreview');
+    try {
+      streamRef = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      video.srcObject = streamRef;
+      video.style.display = 'block';
+    } catch (err) {
+      alert('Could not access camera. You can upload a photo file instead.');
+    }
+  }
+
+  function captureLivePhoto() {
+    const video = document.getElementById('cameraPreview');
+    const canvas = document.getElementById('cameraCanvas');
+    const preview = document.getElementById('photoPreviewImg');
+    const hiddenInput = document.getElementById('id_captured_photo_data');
+
+    if (!streamRef || !video.videoWidth) {
+      alert('Please open the camera first.');
+      return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    hiddenInput.value = dataUrl;
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const roleSelect = document.getElementById('id_role');
+    if (roleSelect) {
+      roleSelect.addEventListener('change', toggleRoleFields);
+      toggleRoleFields();
+    }
+  });
+</script>
+{% endblock %}
